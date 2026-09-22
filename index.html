@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>شبیه‌ساز ترید دلار</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Tahoma, Arial, sans-serif; }
+  body {
+    background: #0b0e11;
+    color: #eaecef;
+    padding: 10px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: 60px;
+  }
+  .card {
+    background: #1e2329;
+    border: 1px solid #2b3139;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .header {
+    text-align: center;
+    padding: 6px 0 10px;
+    position: relative;
+  }
+  .header h1 { font-size: 17px; color: #f0b90b; }
+  .header p { font-size: 10px; color: #848e9c; margin-top: 3px; }
+  .reset-btn {
+    position: absolute;
+    top: 6px;
+    left: 0;
+    background: #2b3139;
+    color: #f6465d;
+    border: 1px solid #f6465d;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 10px;
+    cursor: pointer;
+  }
+  .reset-btn:active { opacity: 0.7; }
+
+  .price-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #2b3139;
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .price-main .label { font-size: 13px; color: #848e9c; }
+  .price-main .value { font-size: 18px; font-weight: bold; color: #0ecb81; }
+  .price-main .value.down { color: #f6465d; }
+
+  .price-sub {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #848e9c;
+    padding: 0 4px;
+  }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 160px;
+    background: #1e2329;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  canvas { width: 100%; height: 100%; display: block; }
+  .chart-label {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-size: 10px;
+    color: #848e9c;
+  }
+
+  .balance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .bal-item {
+    background: #2b3139;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+  }
+  .bal-item .bl { font-size: 10px; color: #848e9c; margin-bottom: 3px; }
+  .bal-item .bv { font-size: 14px; font-weight: bold; }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .input-row input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #2b3139;
+    background: #0b0e11;
+    color: #eaecef;
+    font-size: 16px;
+    outline: none;
+    text-align: center;
+    direction: ltr;
+  }
+  .input-row input:focus { border-color: #f0b90b; }
+
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .btn {
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    color: #fff;
+  }
+  .btn:active { opacity: 0.7; }
+  .btn-buy { background: #0ecb81; }
+  .btn-sell { background: #f6465d; }
+  .btn:disabled { background: #2b3139; color: #5e6673; cursor: not-allowed; }
+
+  .pnl-box {
+    text-align: center;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    transition: background 0.3s;
+  }
+  .pnl-box.profit { background: rgba(14, 203, 129, 0.15); border: 1px solid #0ecb81; }
+  .pnl-box.loss { background: rgba(246, 70, 93, 0.15); border: 1px solid #f6465d; }
+  .pnl-box.neutral { background: #2b3139; border: 1px solid #2b3139; }
+  .pnl-box .pl { font-size: 11px; color: #848e9c; margin-bottom: 4px; }
+  .pnl-box .pv { font-size: 20px; font-weight: bold; }
+
+  .hold-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #2b3139;
+    font-size: 13px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .hold-item:last-child { border-bottom: none; }
+  .hold-item .hc { color: #f0b90b; font-weight: bold; }
+  .hold-item .ha { color: #eaecef; direction: ltr; }
+  .hold-item .hv { color: #848e9c; font-size: 11px; width: 100%; text-align: left; }
+
+  .status {
+    text-align: center;
+    font-size: 10px;
+    color: #5e6673;
+    padding: 6px 0;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #f0b90b;
+    color: #0b0e11;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+    max-width: 92%;
+    text-align: center;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #f6465d; color: #fff; }
+
+  .save-indicator {
+    position: fixed;
+    bottom: 6px;
+    left: 10px;
+    font-size: 9px;
+    color: #3fb950;
+    opacity: 0;
+    transition: opacity 0.4s;
+    z-index: 100;
+  }
+  .save-indicator.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="reset-btn" onclick="resetAll()">🔄 ریست</button>
+  <h1>📈 شبیه‌ساز ترید دلار</h1>
+  <p>قیمت لحظه‌ای واقعی — با ذخیره‌سازی خودکار</p>
+</div>
+
+<div class="card">
+  <div class="price-main">
+    <span class="label">💵 دلار آمریکا (USD)</span>
+    <span class="value" id="usdPrice">—</span>
+  </div>
+  <div class="price-sub">
+    <span>تغییر: <span id="changePct" style="color:#848e9c;">—</span></span>
+    <span id="lastUpdate">—</span>
+  </div>
+</div>
+
+<div class="card" style="padding: 6px;">
+  <div class="chart-wrap">
+    <canvas id="chart"></canvas>
+    <div class="chart-label">نمودار لحظه‌ای</div>
+  </div>
+</div>
+
+<div class="pnl-box neutral" id="pnlBox">
+  <div class="pl">سود / ضرر کل</div>
+  <div class="pv" id="pnlValue" style="color:#848e9c;">—</div>
+</div>
+
+<div class="card">
+  <div style="font-size:12px;color:#848e9c;margin-bottom:6px;">💰 موجودی حساب</div>
+  <div class="balance-grid">
+    <div class="bal-item">
+      <div class="bl">تومان</div>
+      <div class="bv" style="color:#f0b90b;" id="balanceToman">—</div>
+    </div>
+    <div class="bal-item">
+      <div class="bl">دلار</div>
+      <div class="bv" style="color:#0ecb81;" id="balanceUsd">—</div>
+    </div>
+    <div class="bal-item">
+      <div class="bl">ارزش کل (تومان)</div>
+      <div class="bv" style="color:#f0b90b;" id="totalToman">—</div>
+    </div>
+    <div class="bal-item">
+      <div class="bl">ارزش کل (دلار)</div>
+      <div class="bv" style="color:#0ecb81;" id="totalUsd">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="font-size:12px;color:#848e9c;margin-bottom:6px;">
+    مقدار <span style="color:#f0b90b;">دلار</span> برای معامله:
+  </div>
+  <div class="input-row">
+    <input type="number" id="tradeAmount" placeholder="مثلاً 10" min="0.01" step="any">
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-buy" onclick="buy()" id="buyBtn">🟢 خرید دلار</button>
+    <button class="btn btn-sell" onclick="sell()" id="sellBtn">🔴 فروش دلار</button>
+  </div>
+</div>
+
+<div class="card">
+  <div style="font-size:12px;color:#848e9c;margin-bottom:8px;">📦 دارایی‌های شما</div>
+  <div id="holdingsList">
+    <div style="color:#5e6673;font-size:12px;text-align:center;padding:8px;">هنوز دلاری نداری</div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="font-size:12px;color:#848e9c;margin-bottom:8px;">📜 تاریخچه معاملات</div>
+  <div id="historyList">
+    <div style="color:#5e6673;font-size:12px;text-align:center;padding:8px;">هنوز معامله‌ای نکردی</div>
+  </div>
+</div>
+
+<div class="status" id="statusBar">🔄 در حال دریافت قیمت...</div>
+<div class="toast" id="toast"></div>
+<div class="save-indicator" id="saveIndicator">💾 ذخیره شد</div>
+
+<script>
+// ================== تنظیمات ==================
+const INITIAL_TOMAN = 200_000_000;
+const USD_TOMAN_FALLBACK = 233830;
+const MAX_POINTS = 60;
+const STORAGE_KEY = 'trade_sim_state_v1';
+
+// ================== State ==================
+let state = {
+  toman: INITIAL_TOMAN,
+  usd: 0,
+  avgBuyPrice: 0,
+  totalInvested: 0,
+  usdToman: USD_TOMAN_FALLBACK,
+  prevUsdToman: USD_TOMAN_FALLBACK,
+  priceHistory: [],
+  history: [], // تاریخچه معاملات
+  lastUpdate: null,
+  initialized: false,
+};
+
+// ================== ذخیره و بازیابی ==================
+function saveState() {
+  try {
+    const toSave = {
+      toman: state.toman,
+      usd: state.usd,
+      avgBuyPrice: state.avgBuyPrice,
+      totalInvested: state.totalInvested,
+      usdToman: state.usdToman,
+      priceHistory: state.priceHistory,
+      history: state.history,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    showSaveIndicator();
+  } catch (e) {
+    console.error('خطا در ذخیره:', e);
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (data && typeof data.toman === 'number') {
+      state.toman = data.toman;
+      state.usd = data.usd || 0;
+      state.avgBuyPrice = data.avgBuyPrice || 0;
+      state.totalInvested = data.totalInvested || 0;
+      state.usdToman = data.usdToman || USD_TOMAN_FALLBACK;
+      state.prevUsdToman = state.usdToman;
+      state.priceHistory = data.priceHistory || [];
+      state.history = data.history || [];
+      return true;
+    }
+  } catch (e) {
+    console.error('خطا در بازیابی:', e);
+  }
+  return false;
+}
+
+function resetAll() {
+  if (!confirm('مطمئنی می‌خوای همه چی رو ریست کنی؟ موجودی و معاملات پاک میشن.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state.toman = INITIAL_TOMAN;
+  state.usd = 0;
+  state.avgBuyPrice = 0;
+  state.totalInvested = 0;
+  state.priceHistory = [];
+  state.history = [];
+  document.getElementById('tradeAmount').value = '';
+  showToast('🔄 همه چی ریست شد');
+  updateUI();
+  drawChart();
+}
+
+let saveIndicatorTimeout;
+function showSaveIndicator() {
+  const el = document.getElementById('saveIndicator');
+  el.classList.add('show');
+  clearTimeout(saveIndicatorTimeout);
+  saveIndicatorTimeout = setTimeout(() => el.classList.remove('show'), 800);
+}
+
+// ================== توابع کمکی ==================
+function formatToman(n) {
+  if (n === undefined || n === null || isNaN(n)) return '—';
+  return Math.round(n).toLocaleString('fa-IR') + ' تومان';
+}
+function formatUsd(n) {
+  if (n === undefined || n === null || isNaN(n)) return '—';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function formatPct(n) {
+  if (n === undefined || n === null || isNaN(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+// ================== دریافت قیمت ==================
+async function fetchPrice() {
+  try {
+    let newPrice = state.usdToman;
+
+    try {
+      const r1 = await fetch('https://api.nobitex.ir/v2/orderbook/USDTIRT', { cache: 'no-store' });
+      if (r1.ok) {
+        const d1 = await r1.json();
+        if (d1 && d1.lastTradePrice) {
+          newPrice = Math.round(Number(d1.lastTradePrice));
+        } else if (d1 && d1.bids && d1.bids.length) {
+          newPrice = Math.round(Number(d1.bids[0][0]));
+        }
+      }
+    } catch (e) {}
+
+    if (newPrice === state.usdToman) {
+      try {
+        const r2 = await fetch('https://api.priceto.day/v1/latest/irr/usd', { cache: 'no-store' });
+        if (r2.ok) {
+          const d2 = await r2.json();
+          const v = (typeof d2 === 'number') ? d2 : (d2.value || d2.price || d2.rate);
+          if (v) newPrice = Math.round(Number(v) / 10);
+        }
+      } catch (e) {}
+    }
+
+    if (state.initialized) {
+      const volatility = 0.0005;
+      const change = newPrice * volatility * (Math.random() * 2 - 1);
+      newPrice = Math.round(newPrice + change);
+    }
+
+    state.prevUsdToman = state.usdToman;
+    state.usdToman = newPrice;
+    state.lastUpdate = new Date();
+    state.initialized = true;
+
+    state.priceHistory.push(newPrice);
+    if (state.priceHistory.length > MAX_POINTS) state.priceHistory.shift();
+
+    updateUI();
+    drawChart();
+    updateStatus(true);
+    saveState();
+  } catch (err) {
+    console.error('خطا:', err);
+    updateStatus(false);
+  }
+}
+
+// ================== به‌روزرسانی UI ==================
+function updateUI() {
+  const p = state.usdToman;
+  const prev = state.prevUsdToman;
+  const changePct = prev ? ((p - prev) / prev) * 100 : 0;
+
+  const priceEl = document.getElementById('usdPrice');
+  priceEl.textContent = formatToman(p);
+  priceEl.className = 'value' + (p < prev ? ' down' : '');
+
+  const changeEl = document.getElementById('changePct');
+  changeEl.textContent = formatPct(changePct);
+  changeEl.style.color = changePct >= 0 ? '#0ecb81' : '#f6465d';
+
+  if (state.lastUpdate) {
+    document.getElementById('lastUpdate').textContent =
+      'آخرین بروزرسانی: ' + new Date(state.lastUpdate).toLocaleTimeString('fa-IR');
+  }
+
+  const usdValueToman = state.usd * p;
+  const totalToman = state.toman + usdValueToman;
+  const totalUsd = totalToman / p;
+
+  document.getElementById('balanceToman').textContent = formatToman(state.toman);
+  document.getElementById('balanceUsd').textContent = formatUsd(totalUsd);
+  document.getElementById('totalToman').textContent = formatToman(totalToman);
+  document.getElementById('totalUsd').textContent = formatUsd(totalUsd);
+
+  const pnl = totalToman - INITIAL_TOMAN;
+  const pnlBox = document.getElementById('pnlBox');
+  const pnlValue = document.getElementById('pnlValue');
+  pnlBox.className = 'pnl-box ' + (pnl > 0 ? 'profit' : pnl < 0 ? 'loss' : 'neutral');
+  pnlValue.style.color = pnl > 0 ? '#0ecb81' : pnl < 0 ? '#f6465d' : '#848e9c';
+  pnlValue.textContent = (pnl >= 0 ? '+' : '') + formatToman(pnl) +
+    ' (' + ((pnl / INITIAL_TOMAN) * 100).toFixed(2) + '%)';
+
+  renderHoldings();
+  renderHistory();
+  updateButtons();
+}
+
+function renderHoldings() {
+  const el = document.getElementById('holdingsList');
+  let html = '';
+  if (state.usd > 0.0001) {
+    const v = state.usd * state.usdToman;
+    const avg = state.avgBuyPrice || 0;
+    const pnl = (state.usdToman - avg) * state.usd;
+    const pnlColor = pnl >= 0 ? '#0ecb81' : '#f6465d';
+    html += `<div class="hold-item">
+      <span class="hc">USD</span>
+      <span class="ha">${formatUsd(state.usd)}</span>
+      <span class="hv">
+        ارزش: ${formatToman(v)} |
+        میانگین خرید: ${formatToman(avg)} |
+        <span style="color:${pnlColor};">سود/ضرر: ${(pnl>=0?'+':'')}${formatToman(pnl)}</span>
+      </span>
+    </div>`;
+  } else {
+    html = '<div style="color:#5e6673;font-size:12px;text-align:center;padding:8px;">هنوز دلاری نداری</div>';
+  }
+  el.innerHTML = html;
+}
+
+function renderHistory() {
+  const el = document.getElementById('historyList');
+  if (!state.history || state.history.length === 0) {
+    el.innerHTML = '<div style="color:#5e6673;font-size:12px;text-align:center;padding:8px;">هنوز معامله‌ای نکردی</div>';
+    return;
+  }
+  // آخرین ۱۰ معامله
+  const list = state.history.slice(-10).reverse();
+  let html = '';
+  list.forEach(h => {
+    const color = h.type === 'buy' ? '#0ecb81' : '#f6465d';
+    const label = h.type === 'buy' ? '🟢 خرید' : '🔴 فروش';
+    html += `<div class="hold-item" style="font-size:11px;">
+      <span style="color:${color};">${label}</span>
+      <span class="ha">${h.amount} USD</span>
+      <span class="hv" style="color:#848e9c;">
+        قیمت: ${formatToman(h.price)} |
+        ${h.type === 'sell' && h.pnl !== undefined ? `سود/ضرر: <span style="color:${h.pnl >= 0 ? '#0ecb81' : '#f6465d'};">${(h.pnl>=0?'+':'')}${formatToman(h.pnl)}</span> |` : ''}
+        ${h.time}
+      </span>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function updateButtons() {
+  const amt = parseFloat(document.getElementById('tradeAmount').value) || 0;
+  const buyBtn = document.getElementById('buyBtn');
+  const sellBtn = document.getElementById('sellBtn');
+  const cost = amt * state.usdToman;
+
+  buyBtn.disabled = !(amt > 0 && state.toman >= cost);
+  sellBtn.disabled = !(amt > 0 && state.usd >= amt);
+}
+
+function updateStatus(ok) {
+  const el = document.getElementById('statusBar');
+  if (ok && state.lastUpdate) {
+    el.innerHTML = '🟢 متصل — قیمت لحظه‌ای (ذخیره خودکار)';
+  } else {
+    el.innerHTML = '🔴 خطا در دریافت قیمت — دوباره تلاش می‌شود';
+  }
+}
+
+// ================== نمودار ==================
+function drawChart() {
+  const canvas = document.getElementById('chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const data = state.priceHistory;
+
+  ctx.clearRect(0, 0, w, h);
+  if (data.length < 2) return;
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const pad = 10;
+
+  ctx.strokeStyle = '#2b3139';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad + (h - 2 * pad) * (i / 4);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+
+  const points = data.map((v, i) => ({
+    x: pad + (w - 2 * pad) * (i / (data.length - 1)),
+    y: pad + (h - 2 * pad) * (1 - (v - min) / range),
+  }));
+
+  const isUp = data[data.length - 1] >= data[0];
+  const gradient = ctx.createLinearGradient(0, pad, 0, h - pad);
+  if (isUp) {
+    gradient.addColorStop(0, 'rgba(14, 203, 129, 0.3)');
+    gradient.addColorStop(1, 'rgba(14, 203, 129, 0.0)');
+  } else {
+    gradient.addColorStop(0, 'rgba(246, 70, 93, 0.3)');
+    gradient.addColorStop(1, 'rgba(246, 70, 93, 0.0)');
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, h - pad);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length - 1].x, h - pad);
+  ctx.closePath();
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = isUp ? '#0ecb81' : '#f6465d';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  const last = points[points.length - 1];
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = isUp ? '#0ecb81' : '#f6465d';
+  ctx.fill();
+}
+
+// ================== خرید ==================
+function buy() {
+  const amt = parseFloat(document.getElementById('tradeAmount').value);
+  if (!amt || amt <= 0) return showToast('مقدار معتبر وارد کن', true);
+
+  const cost = amt * state.usdToman;
+  if (state.toman < cost) return showToast('موجودی تومانی کافی نیست', true);
+
+  state.toman -= cost;
+
+  const oldTotal = state.totalInvested;
+  const oldAmt = state.usd;
+  const newTotal = oldTotal + cost;
+  const newAmt = oldAmt + amt;
+  state.avgBuyPrice = newTotal / newAmt;
+  state.totalInvested = newTotal;
+  state.usd = newAmt;
+
+  // ذخیره در تاریخچه
+  state.history.push({
+    type: 'buy',
+    amount: amt,
+    price: state.usdToman,
+    time: new Date().toLocaleString('fa-IR'),
+  });
+  if (state.history.length > 100) state.history.shift();
+
+  showToast(`✅ ${amt} دلار خریدی به قیمت ${formatToman(cost)}`);
+  document.getElementById('tradeAmount').value = '';
+  updateUI();
+  saveState();
+}
+
+// ================== فروش ==================
+function sell() {
+  const amt = parseFloat(document.getElementById('tradeAmount').value);
+  if (!amt || amt <= 0) return showToast('مقدار معتبر وارد کن', true);
+  if (state.usd < amt) return showToast('دلار کافی نداری', true);
+
+  const income = amt * state.usdToman;
+  const avg = state.avgBuyPrice || 0;
+  const tradePnl = (state.usdToman - avg) * amt;
+
+  state.usd -= amt;
+  state.toman += income;
+
+  // اگه همه دلارها فروخته شد، میانگین رو ریست کن
+  if (state.usd < 0.0001) {
+    state.usd = 0;
+    state.avgBuyPrice = 0;
+    state.totalInvested = 0;
+  }
+
+  state.history.push({
+    type: 'sell',
+    amount: amt,
+    price: state.usdToman,
+    pnl: tradePnl,
+    time: new Date().toLocaleString('fa-IR'),
+  });
+  if (state.history.length > 100) state.history.shift();
+
+  const pnlText = (tradePnl >= 0 ? '+' : '') + formatToman(tradePnl);
+  showToast(`💰 ${amt} دلار فروختی | دریافت: ${formatToman(income)} | سود/ضرر: ${pnlText}`);
+  document.getElementById('tradeAmount').value = '';
+  updateUI();
+  saveState();
+}
+
+// ================== رویدادها ==================
+document.getElementById('tradeAmount').addEventListener('input', updateButtons);
+
+// هنگام بستن صفحه هم سیو کن
+window.addEventListener('beforeunload', saveState);
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveState();
+});
+
+// ================== شروع ==================
+loadState();
+updateUI();
+drawChart();
+fetchPrice();
+setInterval(fetchPrice, 5000);
+window.addEventListener('resize', drawChart);
+</script>
+
+</body>
+  </html>
